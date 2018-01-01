@@ -9,38 +9,36 @@ function Maze(canvas, height, position, size) {
     this.ctx = canvas.getContext("2d")
     this.height = height
     this.position = position
-    this.grid = new Array(size)
+    this.maze = new MazeData(size)
+    this.maze.fillRandom()
 }
 
 Maze.prototype = {
-    render: function (height, position) {
-        ctx.rect(position.x, position.y, height, height)
+    render: function () {
+        ctx.rect(this.position.x, this.position.y, this.height, this.height)
         ctx.stroke()
-    },
-
-    create: function () {
-        let size = this.grid.length
-        for (let i = 0; i < size; i++) {
-                this.grid[i] = new Array(size)
-        }
-    },
-
-    fill: function () {
-        let size = this.grid.length
-        for (let i = 0; i < size; i++) {
-            for (let j = 0; j < size; j++) {
-                this.grid[i][j] = new Block(i,j)
-            }
-        }
+        this.renderBlocks()
     },
 
     renderBlocks: function() {
-        let size = this.grid.length
-        let height = size * 10
-        for (let i = 0; i < size; i++) {
-            for (let j = 0; j < size; j++) {
-                this.grid[i][j].draw2(i, j, height, this.ctx, this.position.x, size)
-                console.log(i, j)
+        let size = this.maze.size
+        let blocksize = this.height / size
+        let xPos = this.position.x
+        for (let x = 0; x < size; x++, xPos+=blocksize) {
+            let yPos = this.position.y
+            for (let y = 0; y < size; y++, yPos+=blocksize) {
+                if(this.maze.isTop(x, y)) {
+                    this.ctx.beginPath()
+                    this.ctx.moveTo(xPos, yPos)
+                    this.ctx.lineTo(xPos + blocksize, yPos)
+                    this.ctx.stroke()
+                }
+                if(this.maze.isLeft(x, y)) {
+                    this.ctx.beginPath()
+                    this.ctx.moveTo(xPos, yPos)
+                    this.ctx.lineTo(xPos, yPos + blocksize)
+                    this.ctx.stroke()
+                }
             }
         }
     },
@@ -50,36 +48,75 @@ Maze.prototype = {
     }
 }
 
+const TOP = 1
+const LEFT = 2
+const BOTH = TOP | LEFT
 
-function Block(x, y) {
-    this.x = x
-    this.y = y
+
+function MazeData(size) {
+    this.grid = new Array(size * size)
+    this.grid.fill(BOTH)
+    this.size = size
 }
 
+MazeData.prototype = {
 
-Block.prototype = {
-    draw: function (x, y, height, ctx, offset) {
-        ctx.rect(x*height+offset, y*height + offset, height, height)
-        ctx.stroke()
+    getBlock: function (x, y) {
+        return this.grid[x * this.size + y]
     },
 
-    draw2: function (x, y, height, ctx, offset, size) {
-        ctx.moveTo(x + offset, y + offset)
-        ctx.beginPath()
-        ctx.lineTo(x+offset * size, y+offset) //top
-        ctx.lineTo(x+offset+size, y*height + offset) // bot
-        // ctx.lineTo(x*height+offset, y*height + offset)
-        ctx.stroke()
+    setBlock: function (x, y, block) {
+        this.grid[x * this.size + y] = block
     },
 
-    removeWall: function (x, y, height, ctx, offset, side) {
-        ctx.moveTo(x + offset, y + offset)
+    isTop: function (x, y) {
+        return this.getBlock(x, y) & TOP
+    },
+
+    isLeft: function (x, y) {
+        return this.getBlock(x, y) & LEFT
+    },
+
+    setTop: function (x, y, isSet) {
+        if (isSet) {
+            this.setBlock(x, y, this.getBlock() | TOP)
+            return
+        }
+        this.setBlock(x, y, this.getBlock(x, y) & ~TOP)
+    },
+
+    setLeft: function (x, y, isSet) {
+        if (isSet) {
+            this.setBlock(x, y, this.getBlock() | LEFT)
+            return
+        }
+        this.setBlock(x, y, this.getBlock(x, y) & ~LEFT)
+    },
+
+    fillRandom: function () {
+        for (let x = 0; x < this.size; x++) {
+            for (let y = 0; y < this.size; y++) {
+                this.setTop(x, y, (y == 0) ? false : Math.random() >= 0.4)
+                this.setLeft(x, y, (x == 0) ? false : Math.random() >= 0.4)
+            }
+        }
+        this.dump()
+    },
+
+    dump: function () {
+        let s  = ''
+        for (let y = 0; y < this.size; y++, s+='\n') {
+            for (let x = 0; x < this.size; x++) {
+                s+=this.getBlock(x,y)
+            }
+        }
+        console.log(s);
     }
 }
 
 
-let size = 2
-let height = size*size*10
+let size = 30
+let height = size*size
 let position = {
     x: 25,
     y: 25
@@ -88,14 +125,4 @@ let position = {
 
 let maze = new Maze(canvas, height, position, size)
 
-maze.render(height, position)
-
-maze.create()
-
-console.log(maze.grid);
-
-maze.fill()
-
-console.log(maze.grid);
-
-maze.renderBlocks()
+maze.render()
